@@ -6,6 +6,11 @@ La codifica MK60EC1 è legata al VIN: una parte della stringa deriva dai caratte
 
 È un singolo file HTML statico: niente server, niente build, niente tracciamento, nessuna richiesta di rete durante l'uso.
 
+## Online
+
+- Sito: [vagwiki.muninn.ovh/download/Calcolatori/ABS_Bosch_MK60EC1.html](https://vagwiki.muninn.ovh/download/Calcolatori/ABS_Bosch_MK60EC1.html)
+- Mirror (GitHub Pages): [leproide.github.io/Bosch-MK60EC1-long-coding-builder](https://leproide.github.io/Bosch-MK60EC1-long-coding-builder/)
+
 ## Funzioni
 
 - Codifica generata dal VIN più le opzioni di ogni byte documentato (modello, freni, G608/G85, trazione, coppia motore, Hill Hold, tasto TCS/ASR, ACC, tipo ESP, TPMS, PLA, XDS, sensori ruota, Side Assist, tasto ESC).
@@ -19,7 +24,7 @@ La codifica MK60EC1 è legata al VIN: una parte della stringa deriva dai caratte
 
 ## Uso
 
-1. Apri `index.html` nel browser oppure usa il sito GitHub Pages (vedi sotto).
+1. Apri la [versione online](#online), oppure scarica `index.html` e aprilo in un browser qualsiasi (funziona anche offline).
 2. Leggi l'indirizzo 03 con lo strumento di diagnosi e annota il codice software (es. `1K0907379AE`). Scegli la lunghezza corrispondente.
 3. Inserisci il VIN **memorizzato nel quadro strumenti** (indirizzo 17).
 4. Scegli un preset oppure imposta ogni byte dai codici PR dell'auto (adesivo nel vano ruota di scorta o libretto di manutenzione).
@@ -68,9 +73,9 @@ Quell'auto usa `40` nei bit 6–7 del byte 15, anche se lprot indica `80` per la
 
 L'ABS/ESP è un sistema di sicurezza. Usa questo strumento solo se sei qualificato per intervenire sugli impianti frenanti, verifica ogni codifica prima di scriverla, completa le impostazioni di base e prova l'auto su strada prima di riconsegnarla. Il software è fornito senza alcuna garanzia (vedi Licenza).
 
-## GitHub Pages
+## Installazione su un tuo server
 
-Settings → Pages → Source: *Deploy from a branch*, ramo `main`, cartella `/ (root)`. Lo strumento sarà disponibile su `https://leproide.github.io/mk60ec1-coding-builder/`.
+Lo strumento è il solo file `index.html`. Copialo su un qualsiasi web server statico, oppure fai un fork di questo repository e attiva GitHub Pages (Settings → Pages → Source: *Deploy from a branch*, ramo `main`, cartella `/ (root)`).
 
 ## Riconoscimenti
 

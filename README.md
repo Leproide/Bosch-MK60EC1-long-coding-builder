@@ -6,6 +6,11 @@ MK60EC1 codings are bound to the VIN: part of the string is derived from VIN cha
 
 It is a single static HTML file: no server, no build step, no tracking, no network requests at runtime.
 
+## Online
+
+- Site: [vagwiki.muninn.ovh/download/Calcolatori/ABS_Bosch_MK60EC1.html](https://vagwiki.muninn.ovh/download/Calcolatori/ABS_Bosch_MK60EC1.html)
+- Mirror (GitHub Pages): [leproide.github.io/Bosch-MK60EC1-long-coding-builder](https://leproide.github.io/Bosch-MK60EC1-long-coding-builder/)
+
 ## Features
 
 - Coding built from the VIN plus selectable options for every documented byte (model, brakes, G608/G85, drivetrain, engine torque, Hill Hold, TCS/ASR button, ACC, ESP type, TPMS, PLA, XDS, wheel sensors, Side Assist, ESC button).
@@ -19,7 +24,7 @@ It is a single static HTML file: no server, no build step, no tracking, no netwo
 
 ## Usage
 
-1. Open `index.html` in a browser, or use the GitHub Pages site (see below).
+1. Open the [online version](#online), or download `index.html` and open it in any browser (it works offline).
 2. Read address 03 with your diagnostic tool and note the software part number (e.g. `1K0907379AE`). Pick the matching coding length.
 3. Enter the VIN **as stored in the instrument cluster** (address 17).
 4. Choose a preset or set each byte from the car's PR codes (sticker in the spare wheel well or service book).
@@ -68,9 +73,9 @@ That car uses `40` in byte 15 bits 6–7 although lprot lists `80` for left-hand
 
 ABS/ESP is a safety system. Use this tool only if you are qualified to work on braking systems, verify every coding before writing it, complete the basic settings and road test the vehicle before returning it to service. The software is provided without any warranty (see License).
 
-## GitHub Pages
+## Self-hosting
 
-Settings → Pages → Source: *Deploy from a branch*, branch `main`, folder `/ (root)`. The tool will be served at `https://leproide.github.io/mk60ec1-coding-builder/`.
+The tool is the single file `index.html`. Copy it to any static web server, or fork this repository and enable GitHub Pages (Settings → Pages → Source: *Deploy from a branch*, branch `main`, folder `/ (root)`).
 
 ## Credits
 

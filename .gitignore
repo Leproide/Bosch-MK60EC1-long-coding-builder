@@ -1,0 +1,20 @@
+# MK60EC1 Coding Builder
+# Author: https://github.com/Leproide
+# License: GPL-3.0
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.vs/
+.vscode/
+.idea/
+*.swp
+*~
+
+# Local diagnostic logs and scans (may contain customer VINs)
+*.log
+scans/
+autoscan*.txt
