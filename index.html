@@ -244,7 +244,7 @@ const STR = {
     f_b4: "Byte 4 · sensori G608 / G85", h_b4: "Modulo 44 che inizia per 1K1… = G85 non è nella scatola sterzo.",
     f_b6: "Byte 6 · trasmissione", f_escLong: "Byte 6 bit 7 · ESP off con pressione lunga", h_escLong: "Solo firmware BH/BJ/BK/BL.",
     f_torque: "Byte 15 · coppia iniziale (motore)", f_drive: "Byte 15 · bit 6–7 (lato guida)",
-    h_drive: "Fonti in conflitto: lprot indica 80 = guida a sinistra, ma un'A3 8P italiana con guida a sinistra ha accettato 40 e funziona, e un utente conferma 40 su una Yeti con guida a sinistra. Dopo la codifica controlla il segno del G85: sterzando a sinistra, il valore deve essere positivo.",
+    h_drive: "40 = guida a sinistra: accanto a 40 lprot riporta il codice PR L0L (guida a sinistra in VW), e il valore è confermato su un'A3 8P e una Yeti con guida a sinistra; la sua etichetta inglese «Right-Hand-Drive» è con ogni probabilità invertita. La centralina accetta entrambi i valori senza errori, quindi scegli in base all'auto.",
     f_cbc: "Byte 15 · bit 4 (CBC; Start-Stop su BM+)", f_hhc: "Byte 16 · Hill Hold [UG1/UG4]",
     f_btn: "Byte 16 · tasto TCS/ASR (firmware prima di BH)", f_acc: "ACC (Adaptive Cruise Control)",
     f_esptype: "Byte 16 · tipo ESP / cambio", f_tpms: "TPMS (controllo pressione indiretto)",
@@ -293,7 +293,7 @@ const STR = {
     f_b4: "Byte 4 · G608 / G85 sensors", h_b4: "Address 44 part number starting with 1K1… = G85 is not in the steering rack.",
     f_b6: "Byte 6 · drivetrain", f_escLong: "Byte 6 bit 7 · ESP off on long press", h_escLong: "BH/BJ/BK/BL firmware only.",
     f_torque: "Byte 15 · initial torque (engine)", f_drive: "Byte 15 · bits 6–7 (steering side)",
-    h_drive: "Sources conflict: lprot states 80 = left-hand drive, but an Italian left-hand-drive A3 8P accepted 40 and works, and a user reports 40 on a left-hand-drive Yeti. After coding, check the sign of G85: steering left should read positive.",
+    h_drive: "40 = left-hand drive: lprot lists PR code L0L (left-hand drive in VW nomenclature) next to 40, and the value is confirmed on a left-hand-drive A3 8P and Yeti; his English label \"Right-Hand-Drive\" is most likely swapped. The unit accepts either value without fault codes, so choose it from the car.",
     f_cbc: "Byte 15 · bit 4 (CBC; Start-Stop on BM+)", f_hhc: "Byte 16 · Hill Hold [UG1/UG4]",
     f_btn: "Byte 16 · TCS/ASR button (firmware before BH)", f_acc: "ACC (Adaptive Cruise Control)",
     f_esptype: "Byte 16 · ESP type / gearbox", f_tpms: "TPMS (indirect tyre pressure)",
@@ -405,8 +405,8 @@ const TORQUE = [
   ["4","CNLA 1.4 TFSI Jetta Hybrid 2015+ (1K0907379BS)","CNLA 1.4 TFSI Jetta Hybrid 2015+ (1K0907379BS)"],
 ];
 const DRIVE = [
-  ["40","Usato su A3 8P italiana guida SX (verificato) · lprot: guida DX","Used on Italian LHD A3 8P (verified) · lprot: RHD"],
-  ["80","lprot: guida a sinistra","lprot: left-hand drive"],
+  ["40","Guida a sinistra [L0L] · confermato su A3 8P e Yeti","Left-hand drive [L0L] · confirmed on A3 8P and Yeti"],
+  ["80","Guida a destra [L0R] · dedotto, non confermato","Right-hand drive [L0R] · inferred, not confirmed"],
 ];
 const BTN = [
   ["18","Breve: ESP on, TCS off · lunga: ESP off, TCS on","Short: ESP on, TCS off · long: ESP off, TCS on"],

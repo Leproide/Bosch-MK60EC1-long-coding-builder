@@ -60,12 +60,16 @@ lprot numera i byte da 0: una codifica «17 byte» ha i byte 0–17, cioè 18 by
 |---|---|---|---|
 | Audi A3 8P MY2009, 2.0 TDI CR (CBAB), trazione anteriore, manuale, guida a sinistra, Italia | 1K0907379AE H35 SW 0106 | `11424012092200FC881002EB901C00423900` | Accettata e funzionante |
 
-Quell'auto usa `40` nei bit 6–7 del byte 15, anche se lprot indica `80` per la guida a sinistra. Se hai una codifica confermata su un'altra auto, apri una issue o una pull request con codice ricambio, codifica, codici PR ed esito.
+### Lato guida nel byte 15
+
+Lo strumento usa `40` per la guida a sinistra. L'etichetta in inglese di lprot dice "40 = Right-Hand-Drive", ma il codice PR che riporta accanto è `L0L`, che nella nomenclatura VW indica la guida a sinistra (Linkslenker). `40` è confermato su un'A3 8P con guida a sinistra (sopra) e su una Yeti con guida a sinistra. `80` per la guida a destra è dedotto per simmetria e non è confermato su un'auto reale.
+
+Se hai una codifica confermata su un'altra auto, apri una issue o una pull request con codice ricambio, codifica, codici PR ed esito.
 
 ## Limiti noti
 
 - Lo strumento controlla la coerenza interna della stringa, non che la configurazione corrisponda all'auto. Una centralina che accetta la codifica non dimostra che sia corretta.
-- Bit del lato guida nel byte 15: le fonti sono in conflitto (vedi sopra). Dopo la codifica controlla il segno del G85 nel blocco di misura 004: sterzando a sinistra il valore deve essere positivo.
+- Bit del lato guida nel byte 15: la centralina accetta entrambi i valori senza errori e nessuna fonte documenta l'effetto di un valore sbagliato, quindi non si può verificare dopo la codifica. Impostalo in base all'auto (vedi sopra), non per tentativi.
 - Le formule VIN riproducono tutti i valori pubblicati; le lettere nelle posizioni 13–17 del VIN non sono verificate.
 - lprot segnala come problematici i firmware AD e AE e consiglia l'aggiornamento a `1K0907379CD_0120.sgo` / `1K0907379CE_0120.sgo`. Prima salva le adattazioni degli indirizzi 03 e 44.
 

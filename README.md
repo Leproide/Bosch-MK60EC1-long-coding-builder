@@ -60,12 +60,16 @@ lprot numbers bytes from 0, so a "17-byte" coding has bytes 0–17, i.e. 18 real
 |---|---|---|---|
 | Audi A3 8P MY2009, 2.0 TDI CR (CBAB), FWD, manual, LHD, Italy | 1K0907379AE H35 SW 0106 | `11424012092200FC881002EB901C00423900` | Accepted and working |
 
-That car uses `40` in byte 15 bits 6–7 although lprot lists `80` for left-hand drive. If you have a confirmed coding for another car, open an issue or a pull request with the part number, the coding, the PR codes and the result.
+### Byte 15 steering side
+
+The tool uses `40` for left-hand drive. lprot's English label reads "40 = Right-Hand-Drive", but the PR code he lists next to it is `L0L`, which in VW nomenclature means left-hand drive (Linkslenker). `40` is confirmed on a left-hand-drive A3 8P (above) and on a left-hand-drive Yeti. `80` for right-hand drive follows by symmetry and is not confirmed on a real car.
+
+If you have a confirmed coding for another car, open an issue or a pull request with the part number, the coding, the PR codes and the result.
 
 ## Known limitations
 
 - The tool checks internal consistency, not whether the configuration matches the car. A unit that accepts a coding does not prove the coding is correct.
-- Byte 15 steering-side bits: sources conflict (see above). After coding, check the sign of G85 in measuring block 004: steering left should read positive.
+- Byte 15 steering-side bits: the unit accepts either value without fault codes and no source documents the effect of a wrong value, so it cannot be checked after coding. Set it from the car (see above), not by trial and error.
 - The VIN formulas reproduce every published value; letters in VIN positions 13–17 are not verified.
 - Firmware AD and AE are reported as problematic by lprot, who recommends updating to `1K0907379CD_0120.sgo` / `1K0907379CE_0120.sgo`. Save the adaptations of addresses 03 and 44 first.
 
