@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MK60EC1 Coding Builder</title>
+<!--
+  MK60EC1 Coding Builder — long coding calculator for Bosch MK60EC1 ABS/ESP units (VAG)
+  Author: https://github.com/Leproide
+  License: GPL-3.0-or-later
+
+  This program is free software: you can redistribute it and/or modify it under
+  the terms of the GNU General Public License as published by the Free Software
+  Foundation, either version 3 of the License, or (at your option) any later version.
+  This program is distributed WITHOUT ANY WARRANTY. See <https://www.gnu.org/licenses/>.
+
+  Tables: lprot, "Осознанное кодирование блоков ATE MK60EC1" (drive2.ru/l/623620456359922967).
+  Byte numbering starts at 0. lprot's "17 byte" coding = bytes 0..17 = 18 real bytes (36 hex chars).
+  UI language: Italian if the browser language is Italian, English otherwise.
+-->
+<style>
+  /* Layout: single-column tool; config panel, dark coding readout, byte table.
+     Palette: technical graphite + amber of the ABS warning lamp. */
+  :root {
+    --bg: #f3f4f6; --surface: #ffffff; --surface-2: #eceef1; --line: #d3d8de;
+    --fg: #1a1d21; --fg-dim: #59626c; --accent: #c98a0c; --accent-ink: #231803;
+    --bad: #b93434; --warn: #a35a0c; --ok: #2c7a4b;
+    --code-bg: #15181c; --code-fg: #e8ecf0; --code-dim: #9aa4ae; --code-line: #3a424b;
+    --code-vin: #ffcf5a; --code-chk: #86bdff; --code-cfg: #9be58a;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1216; --surface: #171b20; --surface-2: #1f242b; --line: #2c333b;
+      --fg: #e7ebef; --fg-dim: #98a2ad; --accent: #f0b23a; --bad: #ea6b6b; --warn: #e7a253; --ok: #5cc48a;
+      --code-bg: #0a0c0f; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1216; --surface: #171b20; --surface-2: #1f242b; --line: #2c333b;
+    --fg: #e7ebef; --fg-dim: #98a2ad; --accent: #f0b23a; --bad: #ea6b6b; --warn: #e7a253; --ok: #5cc48a;
+    --code-bg: #0a0c0f; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+  .wrap { max-width: 900px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 48px; }
+  header { padding-block: 26px 18px; border-bottom: 2px solid var(--line); display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .lamp { width: 42px; height: 42px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font: 800 .8rem var(--mono); letter-spacing: .04em; flex: none; }
+  h1 { margin: 0; font-size: 1.3rem; text-wrap: balance; }
+  header p { margin: 2px 0 0; color: var(--fg-dim); font-size: .86rem; }
+  .hdr-btns { margin-left: auto; display: flex; gap: 8px; }
+  .sm-btn { border: 1px solid var(--line); background: var(--surface); color: var(--fg-dim); border-radius: 8px; padding: 7px 11px; font: inherit; font-size: .8rem; cursor: pointer; }
+  .sm-btn:hover { color: var(--fg); border-color: var(--accent); }
+  section { margin-top: 24px; }
+  h2 { font-size: .72rem; text-transform: uppercase; letter-spacing: .09em; color: var(--fg-dim); margin: 0 0 10px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px 18px; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .field.wide { grid-column: 1 / -1; }
+  label { font-size: .8rem; font-weight: 600; }
+  .hint { display: block; font-weight: 400; font-size: .74rem; color: var(--fg-dim); }
+  input[type=text], select { font: inherit; font-size: .88rem; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-2); color: var(--fg); width: 100%; min-width: 0; }
+  select:disabled { opacity: .5; }
+  input[type=text] { font-family: var(--mono); letter-spacing: .05em; text-transform: uppercase; }
+  input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  input.bad-input { border-color: var(--bad); }
+  .vin-meta { font: .76rem var(--mono); color: var(--fg-dim); min-height: 1.2em; }
+  .vin-meta b { color: var(--warn); }
+  .vin-meta.err { color: var(--bad); }
+  .preset-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .preset-row select { flex: 1 1 260px; }
+  .verified { font-size: .74rem; color: var(--ok); font-weight: 600; }
+  .warnline { font-size: .78rem; color: var(--warn); }
+  .warnline:empty { display: none; }
+  .out { background: var(--code-bg); border-radius: var(--radius); padding: 18px; }
+  .code { font: 700 clamp(.95rem, 3.9vw, 1.45rem) var(--mono); letter-spacing: .05em; color: var(--code-fg); word-break: break-all; line-height: 1.75; }
+  .code .vin { color: var(--code-vin); } .code .chk { color: var(--code-chk); } .code .cfg { color: var(--code-cfg); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font: .72rem var(--mono); color: var(--code-dim); }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .count { font: .76rem var(--mono); color: var(--code-dim); margin-top: 6px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  .btn { font: 600 .85rem var(--sans); padding: 9px 15px; border-radius: 8px; border: 1px solid transparent; cursor: pointer; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); }
+  .btn.ghost { background: transparent; border-color: var(--code-line); color: var(--code-fg); }
+  .tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: .83rem; }
+  th, td { text-align: left; padding: 7px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: var(--surface-2); font-size: .7rem; text-transform: uppercase; letter-spacing: .06em; color: var(--fg-dim); }
+  td.hex { font: 700 .85rem var(--mono); font-variant-numeric: tabular-nums; }
+  td.bits { font: .78rem var(--mono); color: var(--fg-dim); white-space: nowrap; }
+  .tag { font: .66rem var(--mono); padding: 1px 6px; border-radius: 20px; border: 1px solid var(--line); color: var(--fg-dim); }
+  .note { margin-top: 18px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 13px 15px; font-size: .84rem; }
+  .note ul { margin: 6px 0 0; padding-left: 18px; }
+  .note a, footer a { color: var(--warn); }
+  footer { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); font-size: .76rem; color: var(--fg-dim); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 14px; }
+  .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 20px; font-size: .82rem; font-weight: 600; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
+</style>
+<style>body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="lamp" aria-hidden="true">ABS</div>
+    <div>
+      <h1>MK60EC1 Coding Builder</h1>
+      <p data-i18n="subtitle"></p>
+    </div>
+    <div class="hdr-btns">
+      <button class="sm-btn" id="langBtn" type="button"></button>
+      <button class="sm-btn" id="themeBtn" type="button" data-i18n="theme"></button>
+    </div>
+  </header>
+
+  <section>
+    <h2 data-i18n="secVehicle"></h2>
+    <div class="panel grid">
+      <div class="field wide">
+        <label for="preset"><span data-i18n="presetLbl"></span>
+          <span class="hint" data-i18n="presetHint"></span></label>
+        <div class="preset-row">
+          <select id="preset"></select>
+          <span class="verified" id="verified"></span>
+        </div>
+      </div>
+      <div class="field wide">
+        <label for="vin">VIN <span class="hint" data-i18n="vinHint"></span></label>
+        <input type="text" id="vin" maxlength="17" spellcheck="false" autocomplete="off" value="WAUZZZ8P99A012345">
+        <div class="vin-meta" id="vinMeta"></div>
+      </div>
+      <div class="field wide">
+        <label for="len" data-i18n="lenLbl"></label>
+        <select id="len"></select>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="secConfig"></h2>
+    <div class="panel grid">
+      <div class="field"><label for="b0" data-i18n="f_b0"></label><select id="b0"></select></div>
+      <div class="field"><label for="b2" data-i18n="f_b2"></label><select id="b2"></select>
+        <span class="hint" data-i18n="h_b2"></span></div>
+      <div class="field"><label for="b4" data-i18n="f_b4"></label><select id="b4"></select>
+        <span class="hint" data-i18n="h_b4"></span></div>
+      <div class="field"><label for="b6" data-i18n="f_b6"></label><select id="b6"></select></div>
+      <div class="field"><label for="escLong" data-i18n="f_escLong"></label><select id="escLong"></select>
+        <span class="hint" data-i18n="h_escLong"></span></div>
+      <div class="field"><label for="torque" data-i18n="f_torque"></label><select id="torque"></select></div>
+      <div class="field"><label for="drive" data-i18n="f_drive"></label><select id="drive"></select>
+        <span class="hint" data-i18n="h_drive"></span></div>
+      <div class="field"><label for="cbc" data-i18n="f_cbc"></label><select id="cbc"></select></div>
+      <div class="field"><label for="hhc" data-i18n="f_hhc"></label><select id="hhc"></select></div>
+      <div class="field"><label for="btn" data-i18n="f_btn"></label><select id="btn"></select></div>
+      <div class="field"><label for="acc" data-i18n="f_acc"></label><select id="acc"></select></div>
+      <div class="field"><label for="esptype" data-i18n="f_esptype"></label><select id="esptype"></select></div>
+      <div class="field"><label for="tpms" data-i18n="f_tpms"></label><select id="tpms"></select></div>
+      <div class="field"><label for="pla" data-i18n="f_pla"></label><select id="pla"></select>
+        <span class="hint" data-i18n="h_pla"></span></div>
+      <div class="field"><label for="xds" data-i18n="f_xds"></label><select id="xds"></select></div>
+      <div class="field"><label for="sensF" data-i18n="f_sensF"></label><select id="sensF"></select></div>
+      <div class="field"><label for="sensR" data-i18n="f_sensR"></label><select id="sensR"></select></div>
+      <div class="field"><label for="bsd" data-i18n="f_bsd"></label><select id="bsd"></select></div>
+      <div class="field"><label for="escBtn" data-i18n="f_escBtn"></label><select id="escBtn"></select></div>
+      <div class="field wide"><div class="warnline" id="cfgWarn"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="secCoding"></h2>
+    <div class="out">
+      <div class="code" id="code" aria-live="polite"></div>
+      <div class="count" id="count"></div>
+      <div class="legend">
+        <span><i style="background:var(--code-cfg)"></i><span data-i18n="lgCfg"></span></span>
+        <span><i style="background:var(--code-vin)"></i><span data-i18n="lgVin"></span></span>
+        <span><i style="background:var(--code-chk)"></i><span data-i18n="lgChk"></span></span>
+      </div>
+      <div class="actions">
+        <button class="btn primary" id="copy" type="button" data-i18n="copy"></button>
+        <button class="btn ghost" id="copySp" type="button" data-i18n="copySp"></button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 data-i18n="secBytes"></h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Byte</th><th>Hex</th><th>Bit 7…0</th><th data-i18n="thType"></th><th data-i18n="thMeaning"></th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </section>
+
+  <div class="note">
+    <b data-i18n="noteTitle"></b>
+    <ul>
+      <li data-i18n-html="note1"></li>
+      <li data-i18n="note2"></li>
+      <li data-i18n="note3"></li>
+      <li data-i18n="note4"></li>
+    </ul>
+  </div>
+
+  <footer>
+    <span data-i18n="footer"></span>
+    <span>Author: <a href="https://github.com/Leproide" target="_blank" rel="noopener">github.com/Leproide</a></span>
+  </footer>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/*
+ * MK60EC1 Coding Builder
+ * Author: https://github.com/Leproide
+ * License: GPL-3.0-or-later
+ */
+"use strict";
+
+/* ---------- Language ---------- */
+// Italian if the browser's preferred language is Italian, English for anything else.
+function detectLang() {
+  try {
+    const l = (navigator.languages && navigator.languages[0]) || navigator.language || "en";
+    return /^it\b/i.test(l) ? "it" : "en";
+  } catch { return "en"; }
+}
+let LANG = detectLang();
+
+/* ---------- UI strings ---------- */
+const STR = {
+  it: {
+    subtitle: "Codifica lunga per centraline ABS/ESP Bosch MK60EC1 (Audi, VW, Seat, Skoda)",
+    theme: "Cambia tema", langBtn: "English",
+    secVehicle: "Veicolo e centralina", secConfig: "Configurazione", secCoding: "Codifica", secBytes: "Dettaglio byte",
+    presetLbl: "Preset", presetHint: "Carica una configurazione nota. Puoi poi modificare ogni campo.",
+    verified: "✓ Accettata su auto reale",
+    vinHint: "Usa il VIN memorizzato nel quadro strumenti (blocco 17): se diverso da quello del telaio, la codifica deve seguire il quadro.",
+    lenLbl: "Lunghezza codifica (in base al software della centralina)",
+    f_b0: "Byte 0 · modello e lato guida", f_b2: "Byte 2 · freni anteriori/posteriori",
+    h_b2: "Misura il diametro dei dischi anteriori se il codice PR non è in elenco.",
+    f_b4: "Byte 4 · sensori G608 / G85", h_b4: "Modulo 44 che inizia per 1K1… = G85 non è nella scatola sterzo.",
+    f_b6: "Byte 6 · trasmissione", f_escLong: "Byte 6 bit 7 · ESP off con pressione lunga", h_escLong: "Solo firmware BH/BJ/BK/BL.",
+    f_torque: "Byte 15 · coppia iniziale (motore)", f_drive: "Byte 15 · bit 6–7 (lato guida)",
+    h_drive: "Fonti in conflitto: lprot indica 80 = guida a sinistra, ma un'A3 8P italiana con guida a sinistra ha accettato 40 e funziona, e un utente conferma 40 su una Yeti con guida a sinistra. Dopo la codifica controlla il segno del G85: sterzando a sinistra, il valore deve essere positivo.",
+    f_cbc: "Byte 15 · bit 4 (CBC; Start-Stop su BM+)", f_hhc: "Byte 16 · Hill Hold [UG1/UG4]",
+    f_btn: "Byte 16 · tasto TCS/ASR (firmware prima di BH)", f_acc: "ACC (Adaptive Cruise Control)",
+    f_esptype: "Byte 16 · tipo ESP / cambio", f_tpms: "TPMS (controllo pressione indiretto)",
+    f_pla: "Byte 17 · PLA 2.0/3.0 [7X5/7X6]", h_pla: "Il PLA 1.0 (A3 8P fino al 2010 circa) non usa questo bit.",
+    f_xds: "Byte 17 · XDS [UG3/UG4]", f_sensF: "Byte 18 · sensori ruota anteriori", f_sensR: "Byte 18 · sensori ruota posteriori",
+    f_bsd: "Byte 19 · Side Assist (blocco 3C)", f_escBtn: "Byte 19 · azione tasto ESC (BM+)",
+    lgCfg: "configurazione", lgVin: "dal VIN", lgChk: "checksum (specchio di bit)",
+    copy: "Copia codifica", copySp: "Copia con spazi", thType: "Tipo", thMeaning: "Significato",
+    noteTitle: "Prima di scrivere sulla centralina",
+    note1: "Controlla la stringa con un validatore VIN/codifica, per esempio <a href=\"https://diagnostics.vis4vag.com/en/vin-code-validator\" target=\"_blank\" rel=\"noopener\">vis4vag</a>.",
+    note2: "I byte di configurazione devono rispecchiare l'auto reale (codici PR, diametro dischi, cambio). Una centralina che accetta la codifica non garantisce che sia corretta.",
+    note3: "Dopo la codifica: accesso di sicurezza 40168, impostazioni di base 060 (G85), 063 (laterale), 066 (G201), 069 (longitudinale), poi apprendimento dei fine corsa sterzo nel blocco 44.",
+    note4: "Le formule dei caratteri VIN 7–8 e 13–17 riproducono tutti i valori pubblicati; un carattere fuori dalle tabelle viene segnalato.",
+    footer: "MK60EC1 Coding Builder · GPL-3.0 · tabelle da lprot (drive2.ru)",
+    no: "No", yes: "Sì", none: "Nessuno (valori manuali)",
+    vinEnter: "Inserisci il VIN.", vinShort: n => `VIN incompleto: ${n}/17 caratteri.`,
+    vinInfo: v => `7° <b>${v[6]}</b> · 8° <b>${v[7]}</b> · 13°–17° <b>${v.slice(12)}</b> · anno modello <b>${v[9]}</b>`,
+    count: n => `${n} byte · ${n * 2} caratteri`,
+    copied: "Codifica copiata", copyFail: "Copia non riuscita: seleziona il testo a mano", needVin: "Completa il VIN prima di copiare",
+    w_escLong: "ESP off con pressione lunga (byte 6 bit 7) esiste solo su firmware BH/BJ/BK/BL (38 caratteri).",
+    w_tpmsPlus: "TPMS+ 7K1/7K9 è disponibile solo sulle codifiche a 40 caratteri.",
+    w_xds: "XDS non è supportato dai firmware AD/AE/AN/AP/CD/CE (36 caratteri).",
+    w_hhc: "Hill Hold sulle codifiche a 36 caratteri è supportato solo dai firmware AE/AP/CE. Attivalo solo se l'auto lo aveva di fabbrica.",
+    w_vinLetter: (p, c) => `Il ${p}° carattere del VIN è una lettera (${c}): formula non verificata per lettere in quella posizione.`,
+    w_vinChar: (p, c) => `${p}° carattere del VIN «${c}»: valore ricavato dalla formula, non presente nelle tabelle pubblicate.`,
+    tags: { vin: "VIN", chk: "checksum", cfg: "config" },
+    role: {
+      0:"Modello, cilindro maestro, lato guida", 1:"7° carattere VIN", 2:"Freni", 3:"8° carattere VIN",
+      4:"Sensori G608/G85", 5:"0x22 + 13ª cifra VIN", 6:"Trasmissione (+bit 7 ESP off)", 7:"0xFA + 14ª cifra VIN",
+      8:"Specchio di bit del byte 0", 9:"0x0B + 15ª cifra VIN", 10:"Specchio di bit del byte 2", 11:"0xE4 + 16ª cifra VIN",
+      12:"Specchio di bit del byte 4", 13:"0x19 + 17ª cifra VIN", 14:"Specchio di bit del byte 6",
+      15:"Coppia iniziale, CBC, lato guida", 16:"HHC, TPMS, tasto TCS, ACC, tipo ESP", 17:"PLA, XDS, ACC",
+      18:"Sensori ruota", 19:"TPMS, Side Assist, tasto ESC",
+    },
+  },
+  en: {
+    subtitle: "Long coding for Bosch MK60EC1 ABS/ESP control units (Audi, VW, Seat, Skoda)",
+    theme: "Toggle theme", langBtn: "Italiano",
+    secVehicle: "Vehicle and control unit", secConfig: "Configuration", secCoding: "Coding", secBytes: "Byte breakdown",
+    presetLbl: "Preset", presetHint: "Load a known configuration. You can then change any field.",
+    verified: "✓ Accepted on a real car",
+    vinHint: "Use the VIN stored in the instrument cluster (address 17). If it differs from the chassis VIN, the coding must match the cluster.",
+    lenLbl: "Coding length (depends on the unit's software)",
+    f_b0: "Byte 0 · model and steering side", f_b2: "Byte 2 · front/rear brakes",
+    h_b2: "Measure the front disc diameter if the PR code is not listed.",
+    f_b4: "Byte 4 · G608 / G85 sensors", h_b4: "Address 44 part number starting with 1K1… = G85 is not in the steering rack.",
+    f_b6: "Byte 6 · drivetrain", f_escLong: "Byte 6 bit 7 · ESP off on long press", h_escLong: "BH/BJ/BK/BL firmware only.",
+    f_torque: "Byte 15 · initial torque (engine)", f_drive: "Byte 15 · bits 6–7 (steering side)",
+    h_drive: "Sources conflict: lprot states 80 = left-hand drive, but an Italian left-hand-drive A3 8P accepted 40 and works, and a user reports 40 on a left-hand-drive Yeti. After coding, check the sign of G85: steering left should read positive.",
+    f_cbc: "Byte 15 · bit 4 (CBC; Start-Stop on BM+)", f_hhc: "Byte 16 · Hill Hold [UG1/UG4]",
+    f_btn: "Byte 16 · TCS/ASR button (firmware before BH)", f_acc: "ACC (Adaptive Cruise Control)",
+    f_esptype: "Byte 16 · ESP type / gearbox", f_tpms: "TPMS (indirect tyre pressure)",
+    f_pla: "Byte 17 · PLA 2.0/3.0 [7X5/7X6]", h_pla: "PLA 1.0 (A3 8P up to about 2010) does not use this bit.",
+    f_xds: "Byte 17 · XDS [UG3/UG4]", f_sensF: "Byte 18 · front wheel sensors", f_sensR: "Byte 18 · rear wheel sensors",
+    f_bsd: "Byte 19 · Side Assist (address 3C)", f_escBtn: "Byte 19 · ESC button action (BM+)",
+    lgCfg: "configuration", lgVin: "from VIN", lgChk: "checksum (bit mirror)",
+    copy: "Copy coding", copySp: "Copy with spaces", thType: "Type", thMeaning: "Meaning",
+    noteTitle: "Before writing to the control unit",
+    note1: "Check the string with a VIN/coding validator, for example <a href=\"https://diagnostics.vis4vag.com/en/vin-code-validator\" target=\"_blank\" rel=\"noopener\">vis4vag</a>.",
+    note2: "The configuration bytes must match the actual car (PR codes, disc diameter, gearbox). A unit accepting the coding does not prove it is correct.",
+    note3: "After coding: security access 40168, basic settings 060 (G85), 063 (lateral), 066 (G201), 069 (longitudinal), then steering end-stop learning in address 44.",
+    note4: "The formulas for VIN characters 7–8 and 13–17 reproduce every published value; characters outside the published tables are flagged.",
+    footer: "MK60EC1 Coding Builder · GPL-3.0 · tables by lprot (drive2.ru)",
+    no: "No", yes: "Yes", none: "None (manual values)",
+    vinEnter: "Enter the VIN.", vinShort: n => `Incomplete VIN: ${n}/17 characters.`,
+    vinInfo: v => `7th <b>${v[6]}</b> · 8th <b>${v[7]}</b> · 13th–17th <b>${v.slice(12)}</b> · model year <b>${v[9]}</b>`,
+    count: n => `${n} bytes · ${n * 2} characters`,
+    copied: "Coding copied", copyFail: "Copy failed: select the text manually", needVin: "Complete the VIN before copying",
+    w_escLong: "ESP off on long press (byte 6 bit 7) exists only on BH/BJ/BK/BL firmware (38 characters).",
+    w_tpmsPlus: "TPMS+ 7K1/7K9 is available only on 40-character codings.",
+    w_xds: "XDS is not supported by AD/AE/AN/AP/CD/CE firmware (36 characters).",
+    w_hhc: "On 36-character codings Hill Hold is supported only by AE/AP/CE firmware. Enable it only if the car had it from the factory.",
+    w_vinLetter: (p, c) => `VIN character ${p} is a letter (${c}): the formula is not verified for letters in that position.`,
+    w_vinChar: (p, c) => `VIN character ${p} "${c}": value derived from the formula, not in the published tables.`,
+    tags: { vin: "VIN", chk: "checksum", cfg: "config" },
+    role: {
+      0:"Model, master cylinder, steering side", 1:"VIN character 7", 2:"Brakes", 3:"VIN character 8",
+      4:"G608/G85 sensors", 5:"0x22 + VIN digit 13", 6:"Drivetrain (+bit 7 ESP off)", 7:"0xFA + VIN digit 14",
+      8:"Bit mirror of byte 0", 9:"0x0B + VIN digit 15", 10:"Bit mirror of byte 2", 11:"0xE4 + VIN digit 16",
+      12:"Bit mirror of byte 4", 13:"0x19 + VIN digit 17", 14:"Bit mirror of byte 6",
+      15:"Initial torque, CBC, steering side", 16:"HHC, TPMS, TCS button, ACC, ESP type", 17:"PLA, XDS, ACC",
+      18:"Wheel sensors", 19:"TPMS, Side Assist, ESC button",
+    },
+  },
+};
+const t = k => STR[LANG][k];
+
+/* ---------- Option tables: [value, Italian, English] (lprot, 0-based) ---------- */
+// "L" = left-hand drive [L0L], "R" = right-hand drive [L0R]
+const SIDE = { it: { L: "guida SX", R: "guida DX" }, en: { L: "LHD", R: "RHD" } };
+const LEN = [
+  ["18", "36 caratteri (lprot «17 byte»): AD/CD/AE/CE/AM/AN/AP/BA, 1JD907379F, 3T0907379C",
+         "36 characters (lprot \"17 bytes\"): AD/CD/AE/CE/AM/AN/AP/BA, 1JD907379F, 3T0907379C"],
+  ["19", "38 caratteri (lprot «18 byte»): AH/AJ/AR/AS/AT/BB–BL, 2K0907379C/D/E, 5C0907379C",
+         "38 characters (lprot \"18 bytes\"): AH/AJ/AR/AS/AT/BB–BL, 2K0907379C/D/E, 5C0907379C"],
+  ["20", "40 caratteri (lprot «19 byte»): BM/BR/BS/CA/CB/CC",
+         "40 characters (lprot \"19 bytes\"): BM/BR/BS/CA/CB/CC"],
+];
+// Byte 0 models: [value, model, side or ""]
+const B0_RAW = [
+  ["11","A3 (8P/FM), Golf/Jetta 5 (1K/AJ), Leon (1P), Octavia (1Z)","L"],
+  ["13","A3 (8P/FM), Golf/Jetta (1K), Leon (1P), Octavia (1Z)","R"],
+  ["14","A3/S3 quattro, Golf GTI/GTD/R/GLI, Leon Cupra/FR, Octavia vRS","L"],
+  ["16","A3/S3 quattro, Golf GTI/GTD/R/GLI, Leon Cupra/FR, Octavia vRS","R"],
+  ["21","Altea XL (5P), Golf Plus (1K), Toledo (5P)","L"], ["23","Altea XL (5P), Golf Plus (1K), Toledo (5P)","R"],
+  ["24","Altea Freetrack, Golf Plus facelift","L"], ["26","Altea Freetrack, Golf Plus facelift","R"],
+  ["32","Touran (1T)","L"], ["33","Touran (1T)","R"], ["42","Caddy (2K)","L"], ["43","Caddy (2K)","R"],
+  ["51","Eos NAR (1F/AH)",""], ["54","Eos RoW (1F)","L"], ["56","Eos RoW (1F)","R"],
+  ["62","Caddy Maxi (2K)","L"], ["63","Caddy Maxi (2K)","R"], ["74","Scirocco (13)","L"], ["76","Scirocco (13)","R"],
+  ["84","Superb (3T)","L"], ["86","Superb (3T)","R"], ["91","Yeti (5L)","L"], ["93","Yeti (5L)","R"],
+  ["94","Yeti (5L) CFJA","L"], ["96","Yeti (5L) CFJA","R"],
+  ["A1","Jetta 6 NAR MY2013+, Hybrid (AJ), RoW (16), Sagitar (1K)",""],
+  ["A4","Jetta 6 NAR (AJ), RoW (16)","L"], ["A6","Jetta 6 RoW (16)","R"],
+  ["B1","Jetta 6 NAR (AJ) ≤ MY2013",""], ["B4","Jetta 6 Argentina/Australia (16)",""], ["C5","Passat NMS (A3)",""],
+  ["E1","Beetle NAR (16/AT)",""], ["E4","Beetle RoW (16)","L"], ["E6","Beetle RoW (16)","R"],
+  ["F1","Beetle Convertible (AT)",""], ["F4","Beetle Cabrio (16)","L"], ["F6","Beetle Cabrio (16)","R"],
+];
+const B0 = B0_RAW.map(([v, m, s]) => [v, s ? `${m} · ${SIDE.it[s]}` : m, s ? `${m} · ${SIDE.en[s]}` : m]);
+const B2 = [
+  ["40","Ant. 288 mm [1ZP] · post. tamburi o dischi 253 mm [1KD/1KS]","Front 288 mm [1ZP] · rear drums or discs 253 mm [1KD/1KS]"],
+  ["20","Ant. 280 mm [1ZM] · post. dischi 253 mm [1KF/1KS]","Front 280 mm [1ZM] · rear discs 253 mm [1KF/1KS]"],
+  ["24","Ant. 280 mm [1ZQ] · post. tamburi 203 mm [1KG]","Front 280 mm [1ZQ] · rear drums 203 mm [1KG]"],
+  ["60","Ant. 312 mm [1ZA/1ZB/1ZD/1LJ] · post. dischi 253 mm [1KD/1KJ/1KP]","Front 312 mm [1ZA/1ZB/1ZD/1LJ] · rear discs 253 mm [1KD/1KJ/1KP]"],
+  ["80","Ant. 345 mm [1ZK] · post. dischi 310 mm [1KW]","Front 345 mm [1ZK] · rear discs 310 mm [1KW]"],
+  ["C0","Ant. 312 mm · post. dischi 272 mm","Front 312 mm · rear discs 272 mm"],
+  ["C8","Ant. 312 mm · post. dischi 282 mm","Front 312 mm · rear discs 282 mm"],
+];
+const B4 = [
+  ["09","Senza G608 · G85 per ammortizzatori post. standard/sportivi [1JA/1JR]","No G608 · G85 for standard/sport rear dampers [1JA/1JR]"],
+  ["52","A3 RoW MY2009","A3 RoW MY2009"],
+  ["0A","Senza G608 · G85 per ammortizzatori post. strade dissestate [1JB]","No G608 · G85 for rough-road rear dampers [1JB]"],
+  ["11","G608 nel servofreno (HBV 1K0906207)","G608 in the brake booster (HBV 1K0906207)"],
+  ["12","G608 nel servofreno + strade dissestate","G608 in the brake booster + rough road"],
+  ["19","Skoda Superb (3T) con centralina 3T0*","Skoda Superb (3T) with 3T0* unit"],
+  ["21","Strade dissestate + G608, Golf GT DSG6 e Beetle Malaysia","Rough road + G608, Golf GT DSG6 and Beetle Malaysia"],
+  ["22","Strade dissestate + G608, Golf GT Sport DSG6","Rough road + G608, Golf GT Sport DSG6"],
+  ["49","G85 nel blocco 16 (5K0*) via UDS, o nel 44 G2*; anche Scirocco e auto USA","G85 in address 16 (5K0*) via UDS, or in 44 G2*; also Scirocco and US cars"],
+  ["4A","Alcune A3 (8P) facelift 1.8 TFSI","Some facelift A3 (8P) 1.8 TFSI"],
+  ["51","G608 Bosch sulla linea del vuoto (niente blocchi 16/44, o PR 1N1)","Bosch G608 on the vacuum line (no addresses 16/44, or PR 1N1)"],
+  ["61","Scirocco (13) con G608 sulla linea del vuoto","Scirocco (13) with G608 on the vacuum line"],
+  ["89","Golf GTI e Yeti fino a MY2011","Golf GTI and Yeti up to MY2011"],
+  ["C9","Golf GTI NAR MY2010","Golf GTI NAR MY2010"],
+];
+const B6 = [
+  ["00","Standard (trazione anteriore)","Standard (front-wheel drive)"],
+  ["01","Yeti 4x4 (5L)","Yeti 4x4 (5L)"],
+  ["03","Caddy, Caddy Maxi (2K/2C)","Caddy, Caddy Maxi (2K/2C)"],
+  ["05","Yeti (5L) trazione anteriore","Yeti (5L) front-wheel drive"],
+  ["08","Leon Cupra (1P); raro: Beetle, Jetta NAR, Passat NMS","Leon Cupra (1P); rare: Beetle, Jetta NAR, Passat NMS"],
+  ["0E","Touran (1T)","Touran (1T)"],
+  ["20","Jetta Hybrid (AJ)","Jetta Hybrid (AJ)"],
+];
+const TORQUE = [
+  ["2","2.0 TDI common rail","2.0 TDI common rail"],
+  ["0","1.2 TSI, 1.4 TSI, 2.0 TDI PD","1.2 TSI, 1.4 TSI, 2.0 TDI PD"],
+  ["1","1.6 MPI, 2.5 MPI, 1.8 TSI, 2.0 TSI, 3.6 FSI, 1.6 TDI, 1.9 TDI","1.6 MPI, 2.5 MPI, 1.8 TSI, 2.0 TSI, 3.6 FSI, 1.6 TDI, 1.9 TDI"],
+  ["3","CDLD 2.0 TFSI Leon Cupra","CDLD 2.0 TFSI Leon Cupra"],
+  ["4","CNLA 1.4 TFSI Jetta Hybrid 2015+ (1K0907379BS)","CNLA 1.4 TFSI Jetta Hybrid 2015+ (1K0907379BS)"],
+];
+const DRIVE = [
+  ["40","Usato su A3 8P italiana guida SX (verificato) · lprot: guida DX","Used on Italian LHD A3 8P (verified) · lprot: RHD"],
+  ["80","lprot: guida a sinistra","lprot: left-hand drive"],
+];
+const BTN = [
+  ["18","Breve: ESP on, TCS off · lunga: ESP off, TCS on","Short: ESP on, TCS off · long: ESP off, TCS on"],
+  ["08","Breve: ESP on, TCS off · lunga: tutto off (default A3/S3/Golf R/vRS/Superb)","Short: ESP on, TCS off · long: all off (A3/S3/Golf R/vRS/Superb default)"],
+  ["10","Breve: ESP on, TCS off (default generico)","Short: ESP on, TCS off (generic default)"],
+  ["00","Tasto assente, oppure firmware BH e successivi","No button, or BH firmware and later"],
+];
+const ACC = [["0","Non installato","Not installed"],["1","Installato [8T3]","Installed [8T3]"]];
+const ESPTYPE = [["0","Cambio manuale [1AT]","Manual gearbox [1AT]"],["1","DSG/AQ250 [1AS] o manuale [1AZ]","DSG/AQ250 [1AS] or manual [1AZ]"]];
+const TPMS = [
+  ["0","Assente [7K0]","None [7K0]"], ["2","TPMS [7K6]","TPMS [7K6]"],
+  ["1","TPMS+ [7K1] (solo 40 caratteri)","TPMS+ [7K1] (40 characters only)"],
+  ["3","TPMS+ [7K9] (solo 40 caratteri)","TPMS+ [7K9] (40 characters only)"],
+];
+const SENS = [["0","Passivi","Passive"],["5","Attivi","Active"],["F","Attivi, ampiezza invertita","Active, inverted amplitude"]];
+const ESCBTN = [
+  ["1","Tasto ESC non installato","ESC button not installed"], ["2","Breve: TCS off","Short: TCS off"],
+  ["3","Breve: ESC Sport","Short: ESC Sport"], ["4","Breve: ESC off","Short: ESC off"],
+  ["5","Breve: TCS off + ESC Sport · lunga: ESC off","Short: TCS off + ESC Sport · long: ESC off"],
+  ["6","Breve: ESC Sport · lunga: ESC off","Short: ESC Sport · long: ESC off"],
+  ["7","Breve: TCS off · lunga: ESC off","Short: TCS off · long: ESC off"],
+  ["0","Non codificato","Not coded"],
+];
+const NOYES = [["0","No","No"],["1","Sì","Yes"]];
+
+const FIELDS = { len: LEN, b0: B0, b2: B2, b4: B4, b6: B6, escLong: NOYES, torque: TORQUE, drive: DRIVE, cbc: NOYES,
+  hhc: NOYES, btn: BTN, acc: ACC, esptype: ESPTYPE, tpms: TPMS, pla: NOYES, xds: NOYES,
+  sensF: SENS, sensR: SENS, bsd: NOYES, escBtn: ESCBTN };
+
+/* ---------- Presets ---------- */
+// verified: coding accepted and working on a real car.
+const BASE = { len: "18", b0: "11", b2: "40", b4: "09", b6: "00", escLong: "0", torque: "2", drive: "40", cbc: "0",
+  hhc: "0", btn: "18", acc: "0", esptype: "0", tpms: "0", pla: "0", xds: "0", sensF: "0", sensR: "0", bsd: "0", escBtn: "1" };
+const PRESETS = [
+  { id: "a38p", verified: true,
+    it: "Audi A3 8P 2.0 TDI CR (CBAB), FWD, manuale, guida SX · 1K0907379AE",
+    en: "Audi A3 8P 2.0 TDI CR (CBAB), FWD, manual, LHD · 1K0907379AE",
+    v: { ...BASE, hhc: "1" } },
+  { id: "a38p-nohhc", verified: false,
+    it: "Come sopra, senza Hill Hold",
+    en: "Same as above, without Hill Hold",
+    v: { ...BASE } },
+];
+const DEFAULTS = PRESETS[0].v;
+
+/* ---------- Pure functions ---------- */
+const hx = n => (n & 0xFF).toString(16).toUpperCase().padStart(2, "0");
+const mirror = v => { let r = 0; for (let i = 0; i < 8; i++) { r = (r << 1) | (v & 1); v >>= 1; } return r & 0xFF; };
+
+// ASCII offsets reproducing every value published by lprot:
+// B1 = ascii+0x0A (1→3B, 8→42, A→4B, F→50); B3 = ascii+0xC2 (F→08, P→12, Z→1C, 3→F5);
+// B5..B13 = base + digit = ascii + (base - 0x30).
+const VIN_RULES = [
+  { byte: 1,  pos: 7,  off: 0x0A }, { byte: 3,  pos: 8,  off: 0xC2 },
+  { byte: 5,  pos: 13, off: 0xF2 }, { byte: 7,  pos: 14, off: 0xCA },
+  { byte: 9,  pos: 15, off: 0xDB }, { byte: 11, pos: 16, off: 0xB4 },
+  { byte: 13, pos: 17, off: 0xE9 },
+];
+const CONFIRMED = { 1: "12358AF", 3: "FHJKLMPTZ3456" }; // characters with published values
+
+/** Builds the coding. cfg: form values as strings. Warnings are returned as keys + args. */
+function compute(cfg) {
+  const warns = [];
+  const vin = (cfg.vin || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const len = Number(cfg.len);
+  const b = new Array(len).fill(0);
+  const h = s => parseInt(s, 16);
+
+  b[0] = h(cfg.b0); b[2] = h(cfg.b2); b[4] = h(cfg.b4);
+  b[6] = h(cfg.b6) | (cfg.escLong === "1" ? 0x80 : 0);
+  if (cfg.escLong === "1" && len !== 19) warns.push(["w_escLong"]);
+
+  b[15] = (Number(cfg.torque) & 0x07) | h(cfg.drive) | (cfg.cbc === "1" ? 0x10 : 0);
+
+  let b16 = 0;
+  if (cfg.hhc === "1") b16 |= 0x01;
+  if (len < 20) {                                     // on BM+ (40 chars) TPMS moves to byte 19
+    if (cfg.tpms === "2") b16 |= 0x04;                // TPMS warning lamp
+    if (cfg.tpms === "2" && len === 19) b16 |= 0x02;  // SET button in MFA (38 chars only)
+    if (cfg.tpms === "1" || cfg.tpms === "3") warns.push(["w_tpmsPlus"]);
+    b16 |= h(cfg.btn);                                // TCS/ASR button logic (bits 3-4)
+  }
+  if (cfg.acc === "0") b16 |= 0x20;                   // bit 5 = 1 means ACC NOT installed
+  if (cfg.esptype === "1") b16 |= 0x80;
+  b[16] = b16;
+
+  let b17 = 0;
+  if (cfg.pla === "1") b17 |= 0x01;
+  if (cfg.xds === "1") { b17 |= 0x08; if (len === 18) warns.push(["w_xds"]); }
+  if (cfg.acc === "1") b17 |= 0xF0;
+  b[17] = b17;
+
+  if (len >= 19) b[18] = (h(cfg.sensR) << 4) | h(cfg.sensF);
+  if (len === 20) b[19] = (Number(cfg.tpms) & 0x03) | (cfg.bsd === "1" ? 0x08 : 0) | (Number(cfg.escBtn) << 4);
+  if (cfg.hhc === "1" && len === 18) warns.push(["w_hhc"]);
+
+  const vinOk = vin.length === 17;
+  if (vinOk) {
+    for (const r of VIN_RULES) {
+      const ch = vin[r.pos - 1];
+      b[r.byte] = (ch.charCodeAt(0) + r.off) & 0xFF;
+      if (r.pos >= 13 && !/[0-9]/.test(ch)) warns.push(["w_vinLetter", r.pos, ch]);
+      if (CONFIRMED[r.byte] && !CONFIRMED[r.byte].includes(ch)) warns.push(["w_vinChar", r.pos, ch]);
+    }
+  }
+
+  b[8] = mirror(b[0]); b[10] = mirror(b[2]); b[12] = mirror(b[4]); b[14] = mirror(b[6]);
+  return { bytes: vinOk ? b : null, partial: b, vinOk, vin, warns };
+}
+
+/* ---------- UI ---------- */
+const $ = id => document.getElementById(id);
+const kind = i => [1,3,5,7,9,11,13].includes(i) ? "vin" : [8,10,12,14].includes(i) ? "chk" : "cfg";
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+
+function readCfg() { const c = { vin: $("vin").value }; for (const k in FIELDS) c[k] = $(k).value; return c; }
+
+function fillOptions() {
+  const li = LANG === "it" ? 1 : 2;
+  for (const [id, rows] of Object.entries(FIELDS)) {
+    const el = $(id), keep = el.value;
+    el.textContent = "";
+    for (const row of rows) {
+      const o = document.createElement("option");
+      o.value = row[0];
+      o.textContent = id === "len" ? row[li] : `${row[0]} · ${row[li]}`;
+      el.appendChild(o);
+    }
+    if (keep) el.value = keep;
+  }
+  const p = $("preset"), keepP = p.value;
+  p.textContent = "";
+  const none = document.createElement("option"); none.value = ""; none.textContent = t("none"); p.appendChild(none);
+  for (const pr of PRESETS) { const o = document.createElement("option"); o.value = pr.id; o.textContent = pr[LANG]; p.appendChild(o); }
+  p.value = keepP;
+}
+
+function applyTexts() {
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-html]").forEach(el => { el.innerHTML = t(el.dataset.i18nHtml); }); // static trusted strings only
+  $("langBtn").textContent = t("langBtn");
+}
+
+function applyPreset(id) {
+  const pr = PRESETS.find(p => p.id === id);
+  if (!pr) return;
+  for (const k in pr.v) $(k).value = pr.v[k];
+}
+
+// The preset label stays only while the form matches it exactly.
+function syncPreset(cfg) {
+  const match = PRESETS.find(p => Object.keys(p.v).every(k => p.v[k] === cfg[k]));
+  $("preset").value = match ? match.id : "";
+  $("verified").textContent = match && match.verified ? t("verified") : "";
+}
+
+function update() {
+  const cfg = readCfg();
+  const len = Number(cfg.len);
+  $("sensF").disabled = $("sensR").disabled = len < 19;
+  $("bsd").disabled = $("escBtn").disabled = len < 20;
+  $("btn").disabled = len === 20;
+
+  const r = compute(cfg);
+  const bytes = r.partial.map((v, i) => (!r.vinOk && kind(i) === "vin") ? "??" : hx(v));
+  $("code").innerHTML = bytes.map((v, i) => `<span class="${kind(i)}">${v}</span>`).join("");
+  $("count").textContent = t("count")(len);
+  const tags = t("tags"), role = t("role");
+  $("tbody").innerHTML = bytes.map((v, i) => `<tr><td>${i}</td><td class="hex">${v}</td>
+    <td class="bits">${v === "??" ? "—" : parseInt(v, 16).toString(2).padStart(8, "0")}</td>
+    <td><span class="tag">${tags[kind(i)]}</span></td><td>${role[i]}</td></tr>`).join("");
+
+  const meta = $("vinMeta"), vinRaw = cfg.vin.trim();
+  $("vin").classList.toggle("bad-input", vinRaw.length > 0 && !r.vinOk);
+  meta.classList.toggle("err", !r.vinOk);
+  // VIN is sanitised to [A-Z0-9] in compute(), but escape anyway before innerHTML.
+  meta.innerHTML = !vinRaw ? esc(t("vinEnter")) : !r.vinOk ? esc(t("vinShort")(r.vin.length)) : t("vinInfo")(esc(r.vin));
+  $("cfgWarn").textContent = r.warns.map(([k, ...a]) => typeof t(k) === "function" ? t(k)(...a) : t(k)).join(" ");
+  syncPreset(cfg);
+  update.last = r.vinOk ? bytes : null;
+}
+
+function toast(msg) { const el = $("toast"); el.textContent = msg; el.classList.add("show"); clearTimeout(toast.h); toast.h = setTimeout(() => el.classList.remove("show"), 1700); }
+function copy(spaced) {
+  if (!update.last) { toast(t("needVin")); return; }
+  const s = spaced ? update.last.join(" ") : update.last.join("");
+  const fallback = () => {
+    const ta = document.createElement("textarea"); ta.value = s; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); toast(t("copied")); } catch { toast(t("copyFail")); }
+    ta.remove();
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(s).then(() => toast(t("copied")), fallback);
+  else fallback();
+}
+
+function setLang(l) { LANG = l; applyTexts(); fillOptions(); update(); }
+
+function init() {
+  applyTexts();
+  fillOptions();
+  for (const k in DEFAULTS) $(k).value = DEFAULTS[k];
+  for (const id of Object.keys(FIELDS)) $(id).addEventListener("change", update);
+  $("vin").addEventListener("input", update);
+  $("preset").addEventListener("change", e => { applyPreset(e.target.value); update(); });
+  $("copy").addEventListener("click", () => copy(false));
+  $("copySp").addEventListener("click", () => copy(true));
+  $("langBtn").addEventListener("click", () => setLang(LANG === "it" ? "en" : "it"));
+  try { const th = localStorage.getItem("mk60_theme"); if (th === "dark" || th === "light") document.documentElement.dataset.theme = th; } catch {}
+  $("themeBtn").addEventListener("click", () => {
+    const cur = document.documentElement.dataset.theme;
+    const dark = cur === "dark" || (!cur && matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "light" : "dark";
+    try { localStorage.setItem("mk60_theme", document.documentElement.dataset.theme); } catch {}
+  });
+  update();
+}
+if (typeof document !== "undefined") init();
+if (typeof module !== "undefined") module.exports = { compute, hx, DEFAULTS, PRESETS };
+</script>
+</body>
+</html>
